@@ -1,0 +1,9 @@
+
+{
+  "scripts": {
+    "backup:full": "npx tsx scripts/backup-database.ts",
+    "backup:scheduled": "./scripts/backup-cron.sh",
+    "restore:from-backup": "echo 'Usar: npx tsx database-backup/restore_[TIMESTAMP].ts'",
+    "backup:help": "echo 'Comandos disponibles:\n- backup:full: Backup completo manual\n- backup:scheduled: Backup automático\n- restore:from-backup: Restaurar desde backup'"
+  }
+}

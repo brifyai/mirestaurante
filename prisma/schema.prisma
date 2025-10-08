@@ -1,0 +1,370 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/ai_restaurante/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  User              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model QRConfiguration {
+  id                   String     @id @default(cuid())
+  restaurantId         String     @unique
+  primaryButtonText    String     @default("Ver Menú")
+  primaryButtonUrl     String     @default("#")
+  primaryButtonColor   String     @default("#8B5CF6")
+  secondaryButtonText  String     @default("Hacer Reserva")
+  secondaryButtonUrl   String     @default("#")
+  secondaryButtonColor String     @default("#A855F7")
+  tertiaryButtonText   String     @default("Contactar")
+  tertiaryButtonUrl    String     @default("#")
+  tertiaryButtonColor  String     @default("#6366F1")
+  captureLeadsEnabled  Boolean    @default(false)
+  welcomeMessage       String     @default("¡Bienvenido!")
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  Restaurant           Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model QRScan {
+  id           String     @id @default(cuid())
+  restaurantId String
+  scannedAt    DateTime   @default(now())
+  userAgent    String?
+  ipAddress    String?
+  location     String?
+  createdAt    DateTime   @default(now())
+  Restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model Reservation {
+  id            String            @id @default(cuid())
+  restaurantId  String
+  guestName     String
+  guestEmail    String?
+  guestPhone    String?
+  tableNumber   String?
+  covers        Int
+  date          DateTime
+  time          String
+  status        ReservationStatus @default(CONFIRMED)
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  Restaurant    Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  ReviewRequest ReviewRequest[]
+}
+
+model Restaurant {
+  id              String             @id @default(cuid())
+  name            String
+  slug            String             @unique
+  template        String             @default("default")
+  logo            String?
+  background      String?
+  logoShape       LogoShape          @default(SQUARE)
+  primaryColor    String             @default("#8B5CF6")
+  secondaryColor  String             @default("#A855F7")
+  description     String?
+  address         String?
+  phone           String?
+  email           String?
+  website         String?
+  userId          String
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  QRConfiguration QRConfiguration?
+  QRScan          QRScan[]
+  Reservation     Reservation[]
+  ReviewRequest   ReviewRequest[]
+  ReviewMetrics   ReviewMetrics[]
+  GooglePlaceData GooglePlaceData?
+  ReviewTemplate  ReviewTemplate[]
+  ReviewIncentive ReviewIncentive[]
+  User            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Session {
+  id           String   @id
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String           @id @default(cuid())
+  name          String?
+  email         String           @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          UserRole         @default(USER)
+  isActive      Boolean          @default(true)
+  lastLoginAt   DateTime?
+  createdBy     String?          // ID del usuario que creó esta cuenta
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  Account       Account[]
+  Restaurant    Restaurant[]
+  Session       Session[]
+  UserPermissions UserPermission[]
+  CreatedUsers  User[]           @relation("UserCreatedBy")
+  Creator       User?            @relation("UserCreatedBy", fields: [createdBy], references: [id])
+  Configuration Configuration?
+}
+
+// Modelo para definir permisos del sistema
+model SystemPermission {
+  id              String           @id @default(cuid())
+  name            String           @unique // ej: "view_dashboard", "manage_users", "view_reports"
+  displayName     String           // "Ver Dashboard", "Gestionar Usuarios", "Ver Reportes"
+  description     String?
+  category        String           // "dashboard", "users", "reports", "reservations", "campaigns"
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  UserPermissions UserPermission[]
+}
+
+// Modelo para asignar permisos específicos a usuarios
+model UserPermission {
+  id             String           @id @default(cuid())
+  userId         String
+  permissionId   String
+  granted        Boolean          @default(true)
+  grantedBy      String?          // ID del Super Admin que otorgó el permiso
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  User           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Permission     SystemPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, permissionId])
+  @@index([userId])
+  @@index([permissionId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum LogoShape {
+  SQUARE
+  ROUND
+  ROUNDED
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  PENDING
+  CANCELLED
+  COMPLETED
+}
+
+model ReviewRequest {
+  id                  String                 @id @default(cuid())
+  reservationId       String
+  restaurantId        String
+  customerName        String
+  customerPhone       String?
+  customerEmail       String?
+  scheduledAt         DateTime
+  sentAt              DateTime?
+  reviewedAt          DateTime?
+  status              ReviewRequestStatus    @default(PENDING)
+  googleReviewLink    String
+  incentiveCode       String?
+  incentiveUsed       Boolean                @default(false)
+  satisfactionScore   Int?                   // 1-5 from ML prediction
+  segmentType         ReviewSegment          @default(STANDARD)
+  messageTemplate     String                 @default("default")
+  abTestGroup         String?                // A, B, C for A/B testing
+  clickedAt           DateTime?
+  reviewReceived      Boolean                @default(false)
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+  Reservation         Reservation            @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  Restaurant          Restaurant             @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([status, scheduledAt])
+  @@index([restaurantId, status])
+}
+
+model ReviewMetrics {
+  id                    String     @id @default(cuid())
+  restaurantId          String
+  date                  DateTime   @default(now())
+  requestsSent          Int        @default(0)
+  requestsClicked       Int        @default(0)
+  reviewsReceived       Int        @default(0)
+  averageRating         Float?
+  conversionRate        Float?
+  incentivesUsed        Int        @default(0)
+  abTestResults         Json?
+  mlAccuracy            Float?
+  createdAt             DateTime   @default(now())
+  Restaurant            Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([restaurantId, date])
+  @@index([restaurantId, date])
+}
+
+model GooglePlaceData {
+  id                    String     @id @default(cuid())
+  restaurantId          String     @unique
+  placeId               String
+  businessName          String
+  address               String?
+  phone                 String?
+  rating                Float?
+  totalReviews          Int        @default(0)
+  recentReviews         Json?      // Últimas 5 reseñas de Google
+  businessHours         Json?
+  photoReferences       Json?
+  lastSyncAt            DateTime   @default(now())
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  Restaurant            Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model ReviewTemplate {
+  id                    String               @id @default(cuid())
+  restaurantId          String
+  name                  String
+  messageType           MessageType          @default(STANDARD)
+  segmentType           ReviewSegment        @default(STANDARD)
+  subject               String?
+  message               String
+  includeIncentive      Boolean              @default(false)
+  incentiveText         String?
+  abTestGroup           String?
+  isActive              Boolean              @default(true)
+  successRate           Float?
+  timesUsed             Int                  @default(0)
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  Restaurant            Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, isActive])
+}
+
+model ReviewIncentive {
+  id                    String               @id @default(cuid())
+  restaurantId          String
+  code                  String               @unique
+  type                  IncentiveType        @default(DISCOUNT)
+  description           String
+  discountPercent       Int?
+  discountAmount        Float?
+  freeItem              String?
+  expiresAt             DateTime
+  isActive              Boolean              @default(true)
+  usedCount             Int                  @default(0)
+  maxUses               Int?
+  createdAt             DateTime             @default(now())
+  Restaurant            Restaurant           @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, isActive])
+}
+
+enum ReviewRequestStatus {
+  PENDING
+  SCHEDULED
+  SENT
+  CLICKED
+  REVIEWED
+  DECLINED
+  EXPIRED
+}
+
+enum ReviewSegment {
+  STANDARD
+  VIP
+  FIRST_TIME
+  REPEAT_CUSTOMER
+  LARGE_PARTY
+  SPECIAL_OCCASION
+}
+
+enum MessageType {
+  STANDARD
+  PREMIUM
+  CASUAL
+  FORMAL
+  INCENTIVE_FOCUSED
+}
+
+enum IncentiveType {
+  DISCOUNT
+  FREE_ITEM
+  UPGRADE
+  POINTS
+}
+
+enum UserRole {
+  SUPER_ADMIN // Ve todo, controla permisos de otros usuarios
+  ADMIN       // Permisos limitados definidos por Super Admin
+  USER        // Permisos básicos definidos por Super Admin
+}
+
+model Configuration {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  // API Configurations
+  groqApiKey   String?
+  groqModel    String?  @default("llama3-8b-8192")
+  whatsappAccessToken String?
+  whatsappPhoneNumberId String?
+  googleCalendarServiceKey String?
+  googleCalendarId String?
+  googleAnalyticsPropertyId String?
+  
+  // AI Settings
+  aiTemperature    Float   @default(0.7)
+  aiMaxTokens      Int     @default(1000)
+  aiAutoResponse   Boolean @default(true)
+  aiHumanEscalation Boolean @default(true)
+  aiEscalationKeywords String[] @default(["alergia", "severa", "urgente", "manager", "compleja"])
+  
+  // Business Information
+  businessName     String  @default("Jaraquemada")
+  businessLocation String  @default("Santiago, Chile")
+  businessHours    String  @default("Lun-Jue: 12:00-23:00, Vie-Sáb: 12:00-01:00, Dom: 12:00-22:00")
+  businessPhone    String  @default("+56 9 1234 5678")
+  businessEmail    String  @default("reservas@jaraquemada.com")
+  businessWebsite  String  @default("https://jaraquemada.com")
+  
+  // WhatsApp Features
+  whatsappAutoReply Boolean @default(true)
+  whatsappBusinessHours Boolean @default(true)
+  whatsappReservations Boolean @default(true)
+  whatsappMenu Boolean @default(true)
+  whatsappPromotions Boolean @default(false)
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  User             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
