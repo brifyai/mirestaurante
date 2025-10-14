@@ -15,6 +15,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   ChefHat,
   Plus,
   Search,
@@ -412,87 +421,63 @@ export default function MesasContent() {
     cargarDatos();
   }, []);
 
-  // Función para asignar cliente manualmente
-  const handleAsignarCliente = async (mesa: Mesa) => {
-    const { value: formValues } = await Swal.fire({
-      title: "👤 Asignar Cliente a Mesa",
-      html: `
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium mb-2">Nombre del Cliente</label>
-            <input id="nombre" class="swal2-input" placeholder="Ej: Juan Pérez" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-2">Teléfono (opcional)</label>
-            <input id="telefono" class="swal2-input" placeholder="+56 9 1234 5678" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-2">Email (opcional)</label>
-            <input id="email" class="swal2-input" placeholder="cliente@email.com" />
-          </div>
-          <p class="text-sm text-gray-600 mt-3">Mesa ${mesa.numero} - Zona ${mesa.zona_nombre || "Sin zona"}</p>
-        </div>
-      `,
-      focusConfirm: false,
-      showCancelButton: true,
-      confirmButtonText: "✅ Asignar",
-      cancelButtonText: "❌ Cancelar",
-      confirmButtonColor: "#10b981",
-      preConfirm: () => {
-        const nombre = (document.getElementById("nombre") as HTMLInputElement)
-          ?.value;
-        const telefono = (
-          document.getElementById("telefono") as HTMLInputElement
-        )?.value;
-        const email = (document.getElementById("email") as HTMLInputElement)
-          ?.value;
+  // Estado para el modal de asignar cliente
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedMesa, setSelectedMesa] = useState<Mesa | null>(null);
+  const [formData, setFormData] = useState({
+    nombre: "",
+    telefono: "",
+    email: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-        if (!nombre) {
-          Swal.showValidationMessage("Ingresa el nombre del cliente");
-          return;
-        }
+  // Función para abrir modal de asignar cliente
+  const handleAsignarCliente = (mesa: Mesa) => {
+    setSelectedMesa(mesa);
+    setFormData({ nombre: "", telefono: "", email: "" });
+    setShowAssignModal(true);
+  };
 
-        return { nombre, telefono, email };
-      },
-    });
+  // Función para manejar cambios en el formulario
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
-    if (formValues) {
-      try {
-        // Llamar a la función asignar_cliente_mesa
-        const { error } = await supabase.rpc("asignar_cliente_mesa", {
-          mesa_uuid: mesa.id,
-          nombre_cliente: formValues.nombre,
-          telefono_cliente: formValues.telefono || null,
-          email_cliente: formValues.email || null,
-          tiempo_estimado: "2 hours", // Tiempo estimado por defecto
-        });
+  // Función para enviar el formulario
+  const handleAssignSubmit = async () => {
+    if (!formData.nombre.trim()) {
+      return;
+    }
 
-        if (error) throw error;
+    if (!selectedMesa) return;
+
+    setIsSubmitting(true);
+    try {
+      // Llamar a la función asignar_cliente_mesa
+      const { error } = await supabase.rpc("asignar_cliente_mesa", {
+        mesa_uuid: selectedMesa.id,
+        nombre_cliente: formData.nombre.trim(),
+        telefono_cliente: formData.telefono.trim() || null,
+        email_cliente: formData.email.trim() || null,
+        tiempo_estimado: "2 hours", // Tiempo estimado por defecto
+      });
+
+      if (error) throw error;
 
         // Registrar en el sistema
         ArrivalsManager.addArrival({
-          guestName: formValues.nombre,
-          tableNumber: mesa.numero,
+          guestName: formData.nombre,
+          tableNumber: selectedMesa.numero,
           type: "manual",
         });
 
-        await Swal.fire({
-          title: "✅ Cliente Asignado",
-          html: `<p><strong>${formValues.nombre}</strong> asignado a Mesa ${mesa.numero}</p>`,
-          icon: "success",
-          confirmButtonColor: "#3b82f6",
-        });
-
-        // Recargar datos para mostrar cambios
+        // Cerrar modal y recargar datos
+        setShowAssignModal(false);
         cargarDatos();
       } catch (error) {
         console.error("Error asignando cliente:", error);
-        await Swal.fire({
-          title: "Error",
-          text: "No se pudo asignar el cliente. Por favor, intenta nuevamente.",
-          icon: "error",
-          confirmButtonText: "OK",
-        });
+      } finally {
+        setIsSubmitting(false);
       }
     }
   };
@@ -4150,6 +4135,112 @@ export default function MesasContent() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Modal para Asignar Cliente a Mesa */}
+      <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              Asignar Cliente a Mesa
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Ingresa los datos del cliente para asignarlo a la mesa.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Información de la mesa */}
+            {selectedMesa && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-900">
+                    Mesa {selectedMesa.numero}
+                  </span>
+                  <span className="text-sm text-blue-600">
+                    • Zona {selectedMesa.zona_nombre || "Sin zona"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Formulario */}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="nombre" className="text-sm font-medium text-gray-700">
+                  Nombre del Cliente <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="nombre"
+                  type="text"
+                  placeholder="Ej: Juan Pérez"
+                  value={formData.nombre}
+                  onChange={(e) => handleInputChange("nombre", e.target.value)}
+                  className="w-full"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="telefono" className="text-sm font-medium text-gray-700">
+                  Teléfono <span className="text-gray-400">(opcional)</span>
+                </Label>
+                <Input
+                  id="telefono"
+                  type="tel"
+                  placeholder="+56 9 1234 5678"
+                  value={formData.telefono}
+                  onChange={(e) => handleInputChange("telefono", e.target.value)}
+                  className="w-full"
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                  Email <span className="text-gray-400">(opcional)</span>
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="cliente@email.com"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  className="w-full"
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowAssignModal(false)}
+              disabled={isSubmitting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleAssignSubmit}
+              disabled={!formData.nombre.trim() || isSubmitting}
+              className="bg-green-600 hover:bg-green-700 text-white min-w-[100px]"
+            >
+              {isSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Asignando...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  <span>Asignar</span>
+                </div>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
