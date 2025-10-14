@@ -258,8 +258,13 @@ export default function PortalQRContent() {
 
   return (
     <div className="space-y-6">
-      {/* Actions Bar - Sin título para evitar duplicación con el header principal */}
-      <div className="flex justify-end items-center">
+      {/* Page Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Portal QR</h1>
+          <p className="text-gray-600 mt-1">Configura y gestiona tu código QR</p>
+        </div>
+        <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-3">
           <Button
             variant="outline"
