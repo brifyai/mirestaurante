@@ -340,6 +340,58 @@ export default function Header() {
               <span>Dashboard</span>
             </Link>
 
+            {/* Digital Dropdown Menu - Always Visible */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={cn(
+                    "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary",
+                    isActivePath("/portal-qr") ||
+                      isActivePath("/bandeja") ||
+                      isActivePath("/configuracion/whatsapp") ||
+                      isActivePath("/campanas")
+                      ? "text-primary"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  <QrCode className="h-4 w-4" />
+                  <span>Digital</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                {digitalNavigation.map((item) => (
+                  <DropdownMenuItem key={item.name} asChild>
+                    <Link
+                      to={item.href}
+                      className={cn(
+                        "flex items-center space-x-3 w-full",
+                        isActivePath(item.href)
+                          ? "text-primary"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{item.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {item.description}
+                        </p>
+                      </div>
+                      {item.badge && (
+                        <Badge
+                          variant="destructive"
+                          className="h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
+                        >
+                          {item.badge}
+                        </Badge>
+                      )}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             {!isNavigationDisabled && (
               <>
                 <Link
@@ -367,58 +419,6 @@ export default function Header() {
                   <Calendar className="h-4 w-4" />
                   <span>Reservas</span>
                 </Link>
-
-                {/* Digital Dropdown Menu */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className={cn(
-                        "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary",
-                        isActivePath("/portal-qr") ||
-                          isActivePath("/bandeja") ||
-                          isActivePath("/configuracion/whatsapp") ||
-                          isActivePath("/campanas")
-                          ? "text-primary"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      <QrCode className="h-4 w-4" />
-                      <span>Digital</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56">
-                    {digitalNavigation.map((item) => (
-                      <DropdownMenuItem key={item.name} asChild>
-                        <Link
-                          to={item.href}
-                          className={cn(
-                            "flex items-center space-x-3 w-full",
-                            isActivePath(item.href)
-                              ? "text-primary"
-                              : "text-muted-foreground",
-                          )}
-                        >
-                          <item.icon className="h-4 w-4" />
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{item.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {item.description}
-                            </p>
-                          </div>
-                          {item.badge && (
-                            <Badge
-                              variant="destructive"
-                              className="h-5 w-5 rounded-full p-0 text-xs flex items-center justify-center"
-                            >
-                              {item.badge}
-                            </Badge>
-                          )}
-                        </Link>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
 
                 <Link
                   to="/clientes"
