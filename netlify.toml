@@ -4,14 +4,14 @@
 
 [build.environment]
   NODE_VERSION = "18"
-  VITE_SUPABASE_URL = "https://zumuzfusdjxciehieabx.supabase.co"
-  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1bXV6ZnVzZGp4Y2llaGllYWJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg1NzY2MzcsImV4cCI6MjA3NDE1MjYzN30.LyJeJ50FPX0tS1lys29nIIm3IbQYyMWYKclQRfaDphY"
-  VITE_SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1bXV6ZnVzZGp4Y2llaGllYWJ4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODU3NjYzNywiZXhwIjoyMDc0MTUyNjM3fQ.MyIED7Z6AUxlOfaOuqeLXbi3hAaMjvNGxL1HhTMqv2E"
+  VITE_SUPABASE_URL = "https://pmpbwtxcwlmjprfmnpny.supabase.co"
+  VITE_SUPABASE_ANON_KEY = ""
+  VITE_SUPABASE_SERVICE_ROLE_KEY = ""
 
 # Variables de entorno para funciones
 [functions.environment]
-  VITE_SUPABASE_URL = "https://zumuzfusdjxciehieabx.supabase.co"
-  VITE_SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1bXV6ZnVzZGp4Y2llaGllYWJ4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODU3NjYzNywiZXhwIjoyMDc0MTUyNjM3fQ.MyIED7Z6AUxlOfaOuqeLXbi3hAaMjvNGxL1HhTMqv2E"
+  VITE_SUPABASE_URL = "https://pmpbwtxcwlmjprfmnpny.supabase.co"
+  VITE_SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcGJ3dHhjd2xtanByZm1ucG55Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDExODIxMCwiZXhwIjoyMDc1Njk0MjEwfQ.paste_your_service_role_key_here"
 
 [[redirects]]
   from = "/api/*"
