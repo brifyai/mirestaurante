@@ -262,9 +262,10 @@ export default function PortalQRContent() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Portal QR</h1>
-          <p className="text-gray-600 mt-1">Configura y gestiona tu código QR</p>
+          <p className="text-gray-600 mt-1">
+            Configura y gestiona tu código QR
+          </p>
         </div>
-        <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-3">
           <Button
             variant="outline"
