@@ -1,10 +1,10 @@
 
+/* Importar estilos de React Quill */
+@import 'react-quill/dist/quill.snow.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Importar estilos de React Quill */
-@import 'react-quill/dist/quill.snow.css';
 
 @layer base {
   :root {

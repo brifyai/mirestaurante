@@ -1,39 +1,110 @@
+"use client";
 
-'use client';
-
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { Alert, AlertDescription } from "../../../components/ui/alert";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import { supabase } from "../../../lib/supabase";
 
 export default function SignUpPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
+    setError("");
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Las contraseñas no coinciden');
+      setError("Las contraseñas no coinciden");
       setIsLoading(false);
       return;
     }
 
-    // Temporarily navigate to home
-    navigate('/');
+    if (formData.password.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      // Check if user already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from("users")
+        .select("email")
+        .eq("email", formData.email)
+        .single();
+
+      if (existingUser) {
+        setError("Ya existe una cuenta con este correo electrónico");
+        setIsLoading(false);
+        return;
+      }
+
+      // Create new user
+      const { data: newUser, error: insertError } = await supabase
+        .from("users")
+        .insert({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: "USER",
+          is_active: true,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error("Error creating user:", insertError);
+        setError("Error al crear la cuenta. Inténtalo de nuevo.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Create session data for automatic login
+      const userData = {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        image: newUser.image,
+      };
+      const sessionData = {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        loggedInAt: new Date().toISOString(),
+      };
+
+      // Save session to localStorage
+      localStorage.setItem("user_session", JSON.stringify(sessionData));
+      localStorage.setItem("user_data", JSON.stringify(userData));
+
+      console.log("Registro exitoso - datos guardados en localStorage");
+      console.log("User data saved:", userData);
+      console.log("Session data saved:", sessionData);
+
+      // Navigate to dashboard
+      navigate("/", { replace: true });
+    } catch (err) {
+      console.error("Registration error:", err);
+      setError("Error al crear la cuenta. Inténtalo de nuevo.");
+    }
+
+    setIsLoading(false);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,7 +171,7 @@ export default function SignUpPage() {
                 <Input
                   id="password"
                   name="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handleChange}
                   required
@@ -146,14 +217,14 @@ export default function SignUpPage() {
                   Registrando...
                 </>
               ) : (
-                'Crear cuenta'
+                "Crear cuenta"
               )}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              ¿Ya tienes una cuenta?{' '}
+              ¿Ya tienes una cuenta?{" "}
               <Link
                 to="/auth/signin"
                 className="font-medium text-purple-600 hover:text-purple-500"

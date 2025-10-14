@@ -1,53 +1,52 @@
+"use client";
 
-'use client';
-
-import React, { useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
-import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
-import { useAuth } from '../../../hooks/useAuth';
-import { supabase } from '../../../lib/supabase';
-import bcrypt from 'bcryptjs';
+import React, { useState } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Label } from "../../../components/ui/label";
+import { Alert, AlertDescription } from "../../../components/ui/alert";
+import { Loader2, Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../../../hooks/useAuth";
+import { supabase } from "../../../lib/supabase";
+import bcrypt from "bcryptjs";
 
 export default function SignInPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { forceUpdate } = useAuth();
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   // Obtener la ruta a la que se intentaba acceder antes de ser redirigido al login
-  const from = location.state?.from || '/';
+  const from = location.state?.from || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
+    setError("");
 
     try {
-      // Query the User table from Supabase
+      // Query the users table from Supabase
       const { data: user, error: userError } = await supabase
-        .from('User')
-        .select('*')
-        .eq('email', formData.email)
+        .from("users")
+        .select("*")
+        .eq("email", formData.email)
         .single();
 
       if (userError || !user) {
-        setError('Usuario no encontrado');
+        setError("Usuario no encontrado");
         setIsLoading(false);
         return;
       }
 
-      if (!user.isActive) {
-        setError('Cuenta desactivada');
+      if (!user.is_active) {
+        setError("Cuenta desactivada");
         setIsLoading(false);
         return;
       }
@@ -56,7 +55,7 @@ export default function SignInPage() {
       const passwordValid = user.password === formData.password;
 
       if (!passwordValid) {
-        setError('Contraseña incorrecta');
+        setError("Contraseña incorrecta");
         setIsLoading(false);
         return;
       }
@@ -64,36 +63,37 @@ export default function SignInPage() {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        image: user.image,
       };
       const sessionData = {
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
-        loggedInAt: new Date().toISOString()
+        loggedInAt: new Date().toISOString(),
       };
 
       // Login exitoso - guardar sesión en localStorage
-      localStorage.setItem('user_session', JSON.stringify(sessionData));
-      localStorage.setItem('user_data', JSON.stringify(userData));
+      localStorage.setItem("user_session", JSON.stringify(sessionData));
+      localStorage.setItem("user_data", JSON.stringify(userData));
 
-      console.log('Login exitoso - datos guardados en localStorage');
-      console.log('User data saved:', userData);
-      console.log('Session data saved:', sessionData);
+      console.log("Login exitoso - datos guardados en localStorage");
+      console.log("User data saved:", userData);
+      console.log("Session data saved:", sessionData);
 
       // Forzar actualización del hook de autenticación antes de navegar
       const authUpdated = forceUpdate();
-      console.log('Auth state actualizado:', authUpdated);
+      console.log("Auth state actualizado:", authUpdated);
 
       // Pequeña pausa para asegurar que los componentes se actualicen
       setTimeout(() => {
-        console.log('Navegando a:', from);
+        console.log("Navegando a:", from);
         navigate(from, { replace: true });
       }, 100);
     } catch (err) {
-      console.error('Login error:', err);
-      setError('Error al iniciar sesión. Inténtalo de nuevo.');
+      console.error("Login error:", err);
+      setError("Error al iniciar sesión. Inténtalo de nuevo.");
     }
 
     setIsLoading(false);
@@ -149,7 +149,7 @@ export default function SignInPage() {
                 <Input
                   id="password"
                   name="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={handleChange}
                   required
@@ -181,14 +181,14 @@ export default function SignInPage() {
                   Iniciando sesión...
                 </>
               ) : (
-                'Iniciar sesión'
+                "Iniciar sesión"
               )}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              ¿No tienes una cuenta?{' '}
+              ¿No tienes una cuenta?{" "}
               <Link
                 to="/auth/signup"
                 className="font-medium text-purple-600 hover:text-purple-500"

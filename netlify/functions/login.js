@@ -31,7 +31,7 @@ exports.handler = async (event, context) => {
     // Buscar usuario por email
     const { data: user, error: userError } = await supabase
       .from('User')
-      .select('id, name, email, password, role, isActive')
+      .select('id, name, email, password, role, isActive, image')
       .eq('email', email)
       .single();
 
@@ -100,7 +100,8 @@ exports.handler = async (event, context) => {
           id: user.id,
           name: user.name,
           email: user.email,
-          role: user.role
+          role: user.role,
+          image: user.image
         },
         session: sessionData
       })
