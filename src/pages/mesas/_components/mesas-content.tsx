@@ -151,6 +151,42 @@ export default function MesasContent() {
   const [dragOverZone, setDragOverZone] = useState<string | null>(null);
   const dragRef = useRef<HTMLDivElement>(null);
 
+  // Early return si los datos aún están cargando
+  if (loading) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando datos de mesas...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Early return si hay error
+  if (error) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              <strong className="font-bold">Error al cargar datos: </strong>
+              <span className="block sm:inline">{error}</span>
+            </div>
+            <button
+              onClick={() => cargarDatos()}
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Función para crear mesa de prueba sin zona en base de datos
   const crearMesaSinZona = async () => {
     try {
@@ -2488,41 +2524,7 @@ export default function MesasContent() {
     }
   };
 
-  // Early return si los datos aún están cargando
-  if (loading) {
-    return (
-      <div className="space-y-6 p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Cargando datos de mesas...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  // Early return si hay error
-  if (error) {
-    return (
-      <div className="space-y-6 p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              <strong className="font-bold">Error al cargar datos: </strong>
-              <span className="block sm:inline">{error}</span>
-            </div>
-            <button
-              onClick={() => cargarDatos()}
-              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Reintentar
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 p-6">
