@@ -15,15 +15,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import {
   ChefHat,
   Plus,
   Search,
@@ -150,42 +141,6 @@ export default function MesasContent() {
   const [draggedItem, setDraggedItem] = useState<Mesa | Zona | null>(null);
   const [dragOverZone, setDragOverZone] = useState<string | null>(null);
   const dragRef = useRef<HTMLDivElement>(null);
-
-  // Early return si los datos aún están cargando
-  if (loading) {
-    return (
-      <div className="space-y-6 p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Cargando datos de mesas...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Early return si hay error
-  if (error) {
-    return (
-      <div className="space-y-6 p-6">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              <strong className="font-bold">Error al cargar datos: </strong>
-              <span className="block sm:inline">{error}</span>
-            </div>
-            <button
-              onClick={() => cargarDatos()}
-              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-            >
-              Reintentar
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Función para crear mesa de prueba sin zona en base de datos
   const crearMesaSinZona = async () => {
@@ -457,63 +412,114 @@ export default function MesasContent() {
     cargarDatos();
   }, []);
 
-  // Estado para el modal de asignar cliente
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedMesa, setSelectedMesa] = useState<Mesa | null>(null);
-  const [formData, setFormData] = useState({
-    nombre: "",
-    telefono: "",
-    email: "",
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Función para asignar cliente manualmente
+  const handleAsignarCliente = async (mesa: Mesa) => {
+    const { value: formValues } = await Swal.fire({
+      html: `
+        <div style="padding: 20px 0;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
+            <h3 style="margin: 0; font-size: 18px; font-weight: 600;">Asignar Cliente a Mesa</h3>
+            <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">Mesa ${mesa.numero} - Zona ${mesa.zona_nombre || "Sin zona"}</p>
+          </div>
 
-  // Función para abrir modal de asignar cliente
-  const handleAsignarCliente = (mesa: Mesa) => {
-    setSelectedMesa(mesa);
-    setFormData({ nombre: "", telefono: "", email: "" });
-    setShowAssignModal(true);
-  };
+          <div style="margin-bottom: 20px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151; font-size: 14px;">Nombre del Cliente</label>
+            <input id="nombre" class="swal2-input" placeholder="Ej: Juan Pérez" style="border: 2px solid #e5e7eb; border-radius: 8px; padding: 12px; font-size: 14px; transition: all 0.3s ease;" />
+          </div>
 
-  // Función para manejar cambios en el formulario
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+          <div style="margin-bottom: 20px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151; font-size: 14px;">Teléfono (opcional)</label>
+            <input id="telefono" class="swal2-input" placeholder="+56 9 1234 5678" style="border: 2px solid #e5e7eb; border-radius: 8px; padding: 12px; font-size: 14px; transition: all 0.3s ease;" />
+          </div>
 
-  // Función para enviar el formulario
-  const handleAssignSubmit = async () => {
-    if (!formData.nombre.trim()) {
-      return;
-    }
+          <div style="margin-bottom: 20px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151; font-size: 14px;">Email (opcional)</label>
+            <input id="email" class="swal2-input" placeholder="cliente@email.com" style="border: 2px solid #e5e7eb; border-radius: 8px; padding: 12px; font-size: 14px; transition: all 0.3s ease;" />
+          </div>
 
-    if (!selectedMesa) return;
+          <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; border-left: 4px solid #667eea;">
+            <p style="margin: 0; font-size: 13px; color: #6b7280;">
+              <strong>Información:</strong> Los campos marcados como opcionales no son obligatorios para completar la asignación.
+            </p>
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: "Asignar Cliente",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#667eea",
+      cancelButtonColor: "#6b7280",
+      preConfirm: () => {
+        const nombre = (document.getElementById("nombre") as HTMLInputElement)
+          ?.value;
+        const telefono = (
+          document.getElementById("telefono") as HTMLInputElement
+        )?.value;
+        const email = (document.getElementById("email") as HTMLInputElement)
+          ?.value;
 
-    setIsSubmitting(true);
-    try {
-      // Llamar a la función asignar_cliente_mesa
-      const { error } = await supabase.rpc("asignar_cliente_mesa", {
-        mesa_uuid: selectedMesa.id,
-        nombre_cliente: formData.nombre.trim(),
-        telefono_cliente: formData.telefono.trim() || null,
-        email_cliente: formData.email.trim() || null,
-        tiempo_estimado: "2 hours", // Tiempo estimado por defecto
-      });
+        if (!nombre) {
+          Swal.showValidationMessage("Ingresa el nombre del cliente");
+          return;
+        }
 
-      if (error) throw error;
+        return { nombre, telefono, email };
+      },
+    });
+
+    if (formValues) {
+      try {
+        // Llamar a la función asignar_cliente_mesa
+        const { error } = await supabase.rpc("asignar_cliente_mesa", {
+          mesa_uuid: mesa.id,
+          nombre_cliente: formValues.nombre,
+          telefono_cliente: formValues.telefono || null,
+          email_cliente: formValues.email || null,
+          tiempo_estimado: "2 hours", // Tiempo estimado por defecto
+        });
+
+        if (error) throw error;
 
         // Registrar en el sistema
         ArrivalsManager.addArrival({
-          guestName: formData.nombre,
-          tableNumber: selectedMesa.numero,
+          guestName: formValues.nombre,
+          tableNumber: mesa.numero,
           type: "manual",
         });
 
-        // Cerrar modal y recargar datos
-        setShowAssignModal(false);
+        await Swal.fire({
+          title: "Cliente Asignado",
+          html: `
+            <div style="text-align: center; padding: 20px 0;">
+              <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
+                <svg width="24" height="24" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+              </div>
+              <p style="margin: 0; font-size: 16px; color: #374151;">
+                <strong>${formValues.nombre}</strong> ha sido asignado a la <strong>Mesa ${mesa.numero}</strong>
+              </p>
+              <p style="margin: 12px 0 0 0; font-size: 14px; color: #6b7280;">
+                La reserva está lista para ser gestionada
+              </p>
+            </div>
+          `,
+          icon: false,
+          confirmButtonColor: "#667eea",
+          confirmButtonText: "Continuar",
+        });
+
+        // Recargar datos para mostrar cambios
         cargarDatos();
       } catch (error) {
         console.error("Error asignando cliente:", error);
-      } finally {
-        setIsSubmitting(false);
+        await Swal.fire({
+          title: "Error",
+          text: "No se pudo asignar el cliente. Por favor, intenta nuevamente.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
       }
     }
   };
@@ -1559,109 +1565,130 @@ export default function MesasContent() {
 
     // Mostrar modal con detalles de la mesa
     Swal.fire({
-      title: `
-        <div class="flex items-center gap-2">
-          <span class="text-2xl">${getEstadoIcon(mesa.estado)}</span>
-          <span>Mesa ${mesa.numero}</span>
-          ${modoEditor ? '<span class="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded ml-2">EDITOR</span>' : ""}
-        </div>
-      `,
+      title: "",
       html: `
-        <div class="text-left space-y-3">
-          <!-- Estado y Capacidad -->
-          <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
-              <p class="text-sm font-semibold text-gray-600">Estado</p>
-              <span class="inline-block px-3 py-1 rounded-full text-xs font-bold border ${getEstadoColor(mesa.estado)}">
+        <div style="padding: 0;">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 12px 12px 0 0; position: relative;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <h2 style="margin: 0; font-size: 24px; font-weight: 700;">Mesa ${mesa.numero}</h2>
+                <p style="margin: 4px 0 0 0; font-size: 14px; opacity: 0.9;">${mesa.zona_nombre || "Sin zona asignada"}</p>
+              </div>
+              <div style="text-align: right;">
+                <div style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; backdrop-filter: blur(10px);">
+                  <p style="margin: 0; font-size: 12px; font-weight: 600;">CAPACIDAD</p>
+                  <p style="margin: 0; font-size: 20px; font-weight: 700;">${mesa.capacidad}</p>
+                </div>
+              </div>
+            </div>
+            ${modoEditor ? '<div style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.3); padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;">MODO EDITOR</div>' : ""}
+          </div>
+
+          <!-- Content -->
+          <div style="padding: 24px; background: white;">
+            <!-- Estado Badge -->
+            <div style="text-align: center; margin-bottom: 24px;">
+              <div style="display: inline-block; padding: 8px 20px; border-radius: 20px; font-weight: 600; font-size: 14px; ${
+                mesa.estado === "OCUPADA"
+                  ? "background: #fee2e2; color: #dc2626; border: 2px solid #fca5a5;"
+                  : mesa.estado === "LIBRE"
+                    ? "background: #dcfce7; color: #16a34a; border: 2px solid #86efac;"
+                    : mesa.estado === "RESERVADA"
+                      ? "background: #dbeafe; color: #2563eb; border: 2px solid #93c5fd;"
+                      : "background: #f3f4f6; color: #6b7280; border: 2px solid #d1d5db;"
+              }">
                 ${mesa.estado}
-              </span>
+              </div>
             </div>
-            <div class="text-right">
-              <p class="text-sm font-semibold text-gray-600">Capacidad</p>
-              <p class="text-2xl font-bold text-blue-600">${mesa.capacidad}</p>
-              <p class="text-xs text-gray-500">personas</p>
+
+            <!-- Información Detallada -->
+            <div style="space-y: 16px;">
+              ${
+                mesa.cliente_actual
+                  ? `
+              <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #0369a1;">Cliente Actual</h4>
+                <p style="margin: 0; font-size: 16px; font-weight: 700; color: #0c4a6e;">${mesa.cliente_actual}</p>
+                <div style="margin-top: 8px; font-size: 13px; color: #075985;">
+                  ${mesa.cliente_phone ? `<p style="margin: 2px 0;"><strong>Teléfono:</strong> ${mesa.cliente_phone}</p>` : ""}
+                  ${mesa.cliente_email ? `<p style="margin: 2px 0;"><strong>Email:</strong> ${mesa.cliente_email}</p>` : ""}
+                </div>
+              </div>
+              `
+                  : ""
+              }
+
+              ${
+                mesa.tiempo_ocupado_formateado
+                  ? `
+              <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #dc2626;">Tiempo Ocupado</h4>
+                <p style="margin: 0; font-size: 18px; font-weight: 700; color: #b91c1c;">${mesa.tiempo_ocupado_formateado}</p>
+              </div>
+              `
+                  : ""
+              }
+
+              ${
+                mesa.hora_reserva
+                  ? `
+              <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #0369a1;">Reserva Programada</h4>
+                <p style="margin: 0; font-size: 16px; font-weight: 700; color: #0c4a6e;">
+                  ${new Date(mesa.hora_reserva).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+              `
+                  : ""
+              }
+
+              ${
+                mesa.facturacion_actual > 0
+                  ? `
+              <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #166534;">Facturación Actual</h4>
+                <p style="margin: 0; font-size: 20px; font-weight: 700; color: #15803d;">$${mesa.facturacion_actual.toLocaleString("es-CO")}</p>
+              </div>
+              `
+                  : ""
+              }
+
+              ${
+                mesa.notas
+                  ? `
+              <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #374151;">Notas</h4>
+                <p style="margin: 0; font-size: 14px; color: #6b7280; line-height: 1.5;">${mesa.notas}</p>
+              </div>
+              `
+                  : ""
+              }
+
+              ${
+                modoEditor
+                  ? `
+              <div style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 1px solid #e9d5ff; border-radius: 12px; padding: 16px; margin-top: 20px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: #7c3aed;">Modo Editor</h4>
+                <p style="margin: 0; font-size: 13px; color: #6d28d9; line-height: 1.4;">
+                  Puedes arrastrar esta mesa a otra zona para reorganizarla.
+                </p>
+              </div>
+              `
+                  : ""
+              }
             </div>
           </div>
-
-          <!-- Información Adicional -->
-          <div class="space-y-2">
-            <p><strong>Zona:</strong> ${mesa.zona_nombre || '<span class="text-gray-400">Sin zona asignada</span>'}</p>
-
-            ${
-              mesa.cliente_actual
-                ? `
-            <div class="p-2 bg-blue-50 border border-blue-200 rounded">
-              <p class="text-sm"><strong>Cliente actual:</strong></p>
-              <p class="font-semibold text-blue-800">${mesa.cliente_actual}</p>
-              ${mesa.cliente_phone ? `<p class="text-xs text-blue-600">📞 ${mesa.cliente_phone}</p>` : ""}
-              ${mesa.cliente_email ? `<p class="text-xs text-blue-600">✉️ ${mesa.cliente_email}</p>` : ""}
-            </div>
-            `
-                : ""
-            }
-
-            ${
-              mesa.tiempo_ocupado_formateado
-                ? `
-            <div class="p-2 bg-red-50 border border-red-200 rounded">
-              <p><strong>Tiempo ocupado:</strong></p>
-              <p class="font-semibold text-red-800">${mesa.tiempo_ocupado_formateado}</p>
-            </div>
-            `
-                : ""
-            }
-
-            ${
-              mesa.hora_reserva
-                ? `
-            <div class="p-2 bg-blue-50 border border-blue-200 rounded">
-              <p><strong>Reserva a las:</strong></p>
-              <p class="font-semibold text-blue-800">${new Date(mesa.hora_reserva).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}</p>
-            </div>
-            `
-                : ""
-            }
-
-            ${
-              mesa.facturacion_actual > 0
-                ? `
-            <div class="p-2 bg-green-50 border border-green-200 rounded">
-              <p><strong>Facturación actual:</strong></p>
-              <p class="text-xl font-bold text-green-800">$${mesa.facturacion_actual.toLocaleString("es-CO")}</p>
-            </div>
-            `
-                : ""
-            }
-
-            ${
-              mesa.notas
-                ? `
-            <div class="p-2 bg-gray-50 border border-gray-200 rounded">
-              <p><strong>Notas:</strong></p>
-              <p class="text-sm text-gray-700">${mesa.notas}</p>
-            </div>
-            `
-                : ""
-            }
-          </div>
-
-          ${
-            modoEditor
-              ? `
-            <div class="mt-3 p-3 bg-purple-50 border border-purple-200 rounded">
-              <p class="text-xs text-purple-600"><strong>Modo Editor:</strong> Puedes arrastrar esta mesa a otra zona para reorganizarla.</p>
-            </div>
-            `
-              : ""
-          }
         </div>
       `,
-      icon: undefined,
+      icon: false,
       confirmButtonText: modoEditor ? "Seleccionar Mesa" : "Cerrar",
       showCancelButton: modoEditor,
       cancelButtonText: "Cancelar",
+      confirmButtonColor: "#667eea",
       cancelButtonColor: "#6b7280",
-      width: modoEditor ? "500px" : "450px",
+      width: "480px",
+      padding: 0,
       didOpen: () => {
         if (modoEditor) {
           setMesaSeleccionada(mesa);
@@ -2524,7 +2551,41 @@ export default function MesasContent() {
     }
   };
 
+  // Early return si los datos aún están cargando
+  if (loading) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando datos de mesas...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
+  // Early return si hay error
+  if (error) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              <strong className="font-bold">Error al cargar datos: </strong>
+              <span className="block sm:inline">{error}</span>
+            </div>
+            <button
+              onClick={() => cargarDatos()}
+              className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -4137,112 +4198,6 @@ export default function MesasContent() {
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* Modal para Asignar Cliente a Mesa */}
-      <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-semibold text-gray-900">
-              Asignar Cliente a Mesa
-            </DialogTitle>
-            <DialogDescription className="text-gray-600">
-              Ingresa los datos del cliente para asignarlo a la mesa.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-6 py-4">
-            {/* Información de la mesa */}
-            {selectedMesa && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-900">
-                    Mesa {selectedMesa.numero}
-                  </span>
-                  <span className="text-sm text-blue-600">
-                    • Zona {selectedMesa.zona_nombre || "Sin zona"}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Formulario */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="nombre" className="text-sm font-medium text-gray-700">
-                  Nombre del Cliente <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="nombre"
-                  type="text"
-                  placeholder="Ej: Juan Pérez"
-                  value={formData.nombre}
-                  onChange={(e) => handleInputChange("nombre", e.target.value)}
-                  className="w-full"
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="telefono" className="text-sm font-medium text-gray-700">
-                  Teléfono <span className="text-gray-400">(opcional)</span>
-                </Label>
-                <Input
-                  id="telefono"
-                  type="tel"
-                  placeholder="+56 9 1234 5678"
-                  value={formData.telefono}
-                  onChange={(e) => handleInputChange("telefono", e.target.value)}
-                  className="w-full"
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email <span className="text-gray-400">(opcional)</span>
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="cliente@email.com"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
-                  className="w-full"
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowAssignModal(false)}
-              disabled={isSubmitting}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleAssignSubmit}
-              disabled={!formData.nombre.trim() || isSubmitting}
-              className="bg-green-600 hover:bg-green-700 text-white min-w-[100px]"
-            >
-              {isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Asignando...</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  <span>Asignar</span>
-                </div>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

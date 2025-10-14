@@ -5,13 +5,14 @@
 [build.environment]
   NODE_VERSION = "18"
   VITE_SUPABASE_URL = "https://pmpbwtxcwlmjprfmnpny.supabase.co"
-  VITE_SUPABASE_ANON_KEY = ""
-  VITE_SUPABASE_SERVICE_ROLE_KEY = ""
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcGJ3dHhjd2xtanByZm1ucG55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTgyMTAsImV4cCI6MjA3NTY5NDIxMH0.W3hMgNerh_4rW-eDJIgs38O-yLCRMf3GS7MzLiQjHrk"
+  VITE_SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcGJ3dHhjd2xtanByZm1ucG55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTgyMTAsImV4cCI6MjA3NTY5NDIxMH0.W3hMgNerh_4rW-eDJIgs38O-yLCRMf3GS7MzLiQjHrk"
 
 # Variables de entorno para funciones
 [functions.environment]
   VITE_SUPABASE_URL = "https://pmpbwtxcwlmjprfmnpny.supabase.co"
-  VITE_SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcGJ3dHhjd2xtanByZm1ucG55Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDExODIxMCwiZXhwIjoyMDc1Njk0MjEwfQ.paste_your_service_role_key_here"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcGJ3dHhjd2xtanByZm1ucG55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTgyMTAsImV4cCI6MjA3NTY5NDIxMH0.W3hMgNerh_4rW-eDJIgs38O-yLCRMf3GS7MzLiQjHrk"
+  VITE_SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcGJ3dHhjd2xtanByZm1ucG55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTgyMTAsImV4cCI6MjA3NTY5NDIxMH0.W3hMgNerh_4rW-eDJIgs38O-yLCRMf3GS7MzLiQjHrk"
 
 [[redirects]]
   from = "/api/*"
