@@ -1,12 +1,14 @@
 const { createClient } = require("@supabase/supabase-js");
 
-// Configuración de Supabase - Usar variables de entorno o valores por defecto
+// Configuración de Supabase - Usar variables de entorno
 const supabaseUrl =
-  process.env.SUPABASE_URL || "https://pmpbwtxcwlmjprfmnpny.supabase.co";
+  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "https://pmpbwtxcwlmjprfmnpny.supabase.co";
 const supabaseServiceKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcGJ3dHhjd2xtanByZm1ucG55Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MDExODIxMCwiZXhwIjoyMDc1Njk0MjEwfQ.paste_your_service_role_key_here";
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Para desarrollo temporal, usar ANON KEY si no hay SERVICE KEY (NO RECOMENDADO PARA PRODUCCIÓN)
+const supabaseKey = supabaseServiceKey || process.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtcGJ3dHhjd2xtanByZm1ucG55Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTgyMTAsImV4cCI6MjA3NTY5NDIxMH0.W3hMgNerh_4rW-eDJIgs38O-yLCRMf3GS7MzLiQjHrk";
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 console.log("🔍 Función config.js inicializada con Supabase");
 
@@ -142,7 +144,7 @@ function formatConfigForFrontend(config) {
           ? "connected"
           : "disconnected",
         apiKey: config.google_analytics_property_id || "",
-        measurementId: config.analytics_measurement || "",
+        measurementId: config.google_analytics_property_id || "",
       },
       googlePlaces: {
         status: "disconnected",
@@ -177,7 +179,7 @@ function formatConfigForFrontend(config) {
         "Lun-Jue: 12:00-23:00, Vie-Sáb: 12:00-01:00, Dom: 12:00-22:00",
       phone: config.business_phone || "+56 9 1234 5678",
       email: config.business_email || "reservas@jaraquemada.com",
-      website: "https://jaraquemada.com",
+      website: config.business_website || "https://jaraquemada.com",
     },
     whatsappFeatures: {
       autoReply: config.whatsapp_auto_reply !== false,
@@ -294,8 +296,6 @@ exports.handler = async (event, context) => {
         google_calendar_id: body.apis?.googleCalendar?.calendarId || null,
         google_analytics_property_id:
           body.apis?.googleAnalytics?.apiKey || null,
-        analytics_measurement:
-          body.apis?.googleAnalytics?.measurementId || null,
         ai_temperature: body.aiSettings?.temperature || 0.7,
         ai_max_tokens: body.aiSettings?.maxTokens || 1000,
         ai_auto_response: body.aiSettings?.autoResponse !== false,
@@ -324,16 +324,47 @@ exports.handler = async (event, context) => {
       };
 
       console.log("💾 Guardando configData:", configData);
+      console.log("🔍 Verificando conexión Supabase...");
+      console.log("🔍 URL:", supabaseUrl);
+      console.log("🔍 Key configurada:", supabaseKey ? "Sí" : "No");
+      console.log("🔍 Service Key disponible:", supabaseServiceKey ? "Sí" : "No (usando ANON key)");
+
+      // Verificar que tenemos una configuración válida de Supabase
+      if (!supabaseUrl || !supabaseKey) {
+        console.error("❌ Configuración de Supabase incompleta");
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ 
+            error: "Configuración de Supabase incompleta",
+            details: "Verifica SUPABASE_URL y las claves de acceso"
+          }),
+        };
+      }
 
       // Intentar actualizar primero, si no existe, crear
-      const { data: existingConfig } = await supabase
+      console.log("🔍 Verificando si existe configuración para user_id:", userId);
+      const { data: existingConfig, error: checkError } = await supabase
         .from("configurations")
         .select("id")
         .eq("user_id", userId)
         .single();
 
+      if (checkError && checkError.code !== "PGRST116") {
+        console.error("Error verificando configuración existente:", checkError);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ 
+            error: "Error verificando configuración",
+            details: checkError.message
+          }),
+        };
+      }
+
       let result;
       if (existingConfig) {
+        console.log("🔄 Actualizando configuración existente...");
         // Actualizar configuración existente
         result = await supabase
           .from("configurations")
@@ -342,6 +373,7 @@ exports.handler = async (event, context) => {
           .select()
           .single();
       } else {
+        console.log("➕ Creando nueva configuración...");
         // Crear nueva configuración
         result = await supabase
           .from("configurations")
@@ -350,12 +382,19 @@ exports.handler = async (event, context) => {
           .single();
       }
 
+      console.log("💾 Resultado de Supabase:", result);
+
       if (result.error) {
-        console.error("Error al guardar configuración:", result.error);
+        console.error("❌ Error al guardar configuración:", result.error);
+        console.error("❌ Detalles del error:", JSON.stringify(result.error, null, 2));
         return {
           statusCode: 500,
           headers,
-          body: JSON.stringify({ error: "Error al guardar configuración" }),
+          body: JSON.stringify({ 
+            error: "Error al guardar configuración",
+            details: result.error.message || result.error,
+            hint: result.error.hint || "Verifica los datos enviados"
+          }),
         };
       }
 

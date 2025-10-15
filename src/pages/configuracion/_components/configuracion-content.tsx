@@ -2,6 +2,15 @@
 
 import React, { useState, useEffect } from "react";
 import {
+  fetchGroqModelsMock,
+  fetchRealGroqModels,
+} from "../../../mocks/groq-models-mock";
+import {
+  getConfiguration,
+  saveConfiguration as saveConfigToSupabase,
+} from "../../../lib/supabase-config";
+import { testConnectionMock } from "../../../mocks/test-connection-mock";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -137,6 +146,8 @@ export default function ConfiguracionContent() {
     },
   });
 
+  const [selectedModel, setSelectedModel] = useState("llama3-8b-8192");
+
   const [whatsappFeatures] = useState([
     { id: "menu", name: "Solicitud de Carta/Menú", enabled: true },
     { id: "reservations", name: "Gestión de Reservas", enabled: true },
@@ -219,74 +230,182 @@ Esperamos que hayas disfrutado mucho tu visita a *Jaraquemada* ayer.
   const loadConfiguration = async () => {
     try {
       setLoading("load");
+
+      // Logging detallado del objeto user
+      console.log("🔍 Detalles del objeto user:", {
+        user: user,
+        userId: user?.id,
+        userEmail: user?.email,
+        userExists: !!user,
+        userHasId: !!user?.id,
+      });
+
       const userId = user?.id;
       if (!userId) {
-        console.log("No hay usuario autenticado");
+        console.log(
+          "❌ No hay usuario autenticado - user?.id es null/undefined",
+        );
+        console.log(
+          "❌ Intentando cargar configuración sin user_id - abortando",
+        );
         setLoading(null);
         return;
       }
 
-      const response = await fetch(
-        `/.netlify/functions/config?userId=${userId}`,
+      console.log("✅ User ID válido:", userId);
+
+      // Usar directamente Supabase para cargar configuración
+      console.log(
+        "🔍 Usando Supabase para cargar configuración para userId:",
+        userId,
       );
+      console.log("🔍 Frontend: User Object:", user);
+      console.log("🔍 Frontend: user?.id:", user?.id);
+      console.log("🔍 Frontend: userId type:", typeof userId);
+      const data = await getConfiguration(userId);
+      console.log("✅ Datos recibidos desde Supabase:", data);
+      console.log("📊 Resumen de datos recibidos:", {
+        tieneApis: !!data.apis,
+        tieneAiSettings: !!data.aiSettings,
+        tieneBusinessInfo: !!data.businessInfo,
+        groqApiKeyLength: data.apis?.groq?.apiKey?.length || 0,
+        groqModel: data.aiSettings?.model,
+      });
 
-      if (response.ok) {
-        const data = await response.json();
+      // Actualizar estados con los datos cargados, haciendo merge con valores existentes
+      console.log("🔍 Procesando APIs...");
+      if (data.apis) {
+        console.log("🔍 Datos APIs recibidos del backend:", data.apis);
+        console.log(
+          "🔍 Groq API Key encontrada:",
+          data.apis.groq?.apiKey ? "Sí" : "No",
+        );
+        console.log(
+          "🔍 Google Analytics API Key:",
+          data.apis.googleAnalytics?.apiKey,
+        );
+        console.log(
+          "🔍 Google Analytics Measurement ID:",
+          data.apis.googleAnalytics?.measurementId,
+        );
+        console.log(
+          "🔍 Google Analytics status:",
+          data.apis.googleAnalytics?.status,
+        );
 
-        // Actualizar estados con los datos cargados, haciendo merge con valores existentes
-        if (data.apis) {
-          console.log("🔍 Datos APIs recibidos del backend:", data.apis);
-          console.log(
-            "🔍 Google Analytics API Key:",
-            data.apis.googleAnalytics?.apiKey,
-          );
-          console.log(
-            "🔍 Google Analytics Measurement ID:",
-            data.apis.googleAnalytics?.measurementId,
-          );
-          console.log(
-            "🔍 Google Analytics status:",
-            data.apis.googleAnalytics?.status,
-          );
-
-          setApiConfigs((prev) => ({
+        console.log("🔄 Actualizando apiConfigs con:", data.apis);
+        setApiConfigs((prev) => {
+          const newConfig = {
             ...prev,
             ...data.apis,
-          }));
+          };
+          console.log("✅ apiConfigs actualizado:", newConfig);
+          console.log(
+            "  - Groq API Key:",
+            newConfig.groq?.apiKey ? "✅" : "❌",
+          );
+          console.log("  - Groq Status:", newConfig.groq?.status);
+          return newConfig;
+        });
 
-          // Si hay una API key de Groq válida, cargar los modelos automáticamente
-          if (data.apis.groq?.apiKey && data.apis.groq.apiKey.length >= 20) {
-            fetchGroqModels(data.apis.groq.apiKey, data.aiSettings?.model);
-          }
+        // Si hay una API key de Groq válida, cargar los modelos automáticamente
+        if (
+          data.apis.groq?.apiKey &&
+          data.apis.groq.apiKey.length >= 20 &&
+          data.aiSettings?.model
+        ) {
+          console.log("🚀 Cargando modelos de Groq automáticamente...");
+          fetchGroqModels(data.apis.groq.apiKey, data.aiSettings.model);
         }
+      }
 
-        if (data.aiSettings) {
-          setAiSettings((prev) => ({
+      console.log("🔍 Procesando AI Settings...");
+      if (data.aiSettings) {
+        console.log("🔍 AI Settings encontrados:", data.aiSettings);
+        setAiSettings((prev) => {
+          const newAiSettings = {
             ...prev,
             ...data.aiSettings,
-            businessInfo: data.businessInfo || prev.businessInfo,
-          }));
-        }
+          };
+          console.log("✅ aiSettings actualizado:", newAiSettings);
+          console.log("  - Groq Model:", newAiSettings.model);
+          console.log("  - Temperature:", newAiSettings.temperature);
+          return newAiSettings;
+        });
 
-        if (data.whatsappFeatures) {
-          // Actualizar whatsappFeatures si es necesario en el futuro
+        // Si hay un modelo de AI configurado, actualizarlo
+        if (data.aiSettings.model) {
+          console.log(
+            "🎯 Actualizando selectedModel a:",
+            data.aiSettings.model,
+          );
+          setSelectedModel(data.aiSettings.model);
         }
-      } else {
-        console.log(
-          "ℹ️ No hay configuración guardada, usando valores por defecto",
-        );
       }
+
+      console.log("🔍 Procesando Business Info...");
+      if (data.businessInfo) {
+        console.log("🔍 Business Info encontrado:", data.businessInfo);
+        setAiSettings((prev) => ({
+          ...prev,
+          businessInfo: {
+            ...prev.businessInfo,
+            ...data.businessInfo,
+          },
+        }));
+      }
+
+      console.log("🔍 Procesando WhatsApp Features...");
+      if (data.whatsappFeatures) {
+        console.log("🔍 WhatsApp Features encontrados:", data.whatsappFeatures);
+        // Actualizar whatsappFeatures si es necesario en el futuro
+      }
+      console.log("✅ Configuración cargada exitosamente");
+      console.log("📋 Estado Final:");
+      console.log(
+        "  - Groq API Key:",
+        data.apis.groq?.apiKey ? "Configurada" : "No configurada",
+      );
+      console.log(
+        "  - Groq Model:",
+        data.aiSettings?.model || "No configurado",
+      );
+      console.log("  - Selected Model:", selectedModel);
     } catch (error) {
-      console.error("Error cargando configuración:", error);
+      console.error("❌ Error cargando configuración:", error);
+      console.error("❌ Detalles del error:", error.message);
+      console.error("❌ Stack trace:", error.stack);
+
+      // Mostrar error más detallado al usuario
+      if (error.message.includes("JWT")) {
+        alert("❌ Error de autenticación: Por favor, inicia sesión nuevamente");
+      } else if (error.message.includes("permission")) {
+        alert(
+          "❌ Error de permisos: No tienes acceso para leer la configuración",
+        );
+      } else {
+        alert(`❌ Error cargando configuración: ${error.message}`);
+      }
     } finally {
       setLoading(null);
     }
   };
 
-  // Cargar configuración al montar el componente
+  // Cargar configuración cuando el usuario esté disponible o cuando el componente se monte
   useEffect(() => {
-    loadConfiguration();
-  }, []);
+    console.log("🔄 useEffect triggered -用户状态检查:");
+    console.log("  - user existe:", !!user);
+    console.log("  - user.id:", user?.id);
+    console.log("  - user.email:", user?.email);
+
+    // Solo cargar configuración si hay un usuario válido
+    if (user?.id) {
+      console.log("🚀 Usuario disponible, cargando configuración...");
+      loadConfiguration();
+    } else {
+      console.log("⏳ Esperando que el usuario se cargue...");
+    }
+  }, [user]); // Se ejecuta cuando cambie el objeto user
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -318,7 +437,8 @@ Esperamos que hayas disfrutado mucho tu visita a *Jaraquemada* ayer.
     setLoading(apiType);
 
     try {
-      // Mapear configuraciones específicas según el tipo de API
+      console.log(`🧪 Probando conexión para ${apiType}`);
+
       let config;
 
       if (apiType === "groq") {
@@ -329,18 +449,26 @@ Esperamos que hayas disfrutado mucho tu visita a *Jaraquemada* ayer.
         config = apiConfigs[apiType];
       }
 
-      const response = await fetch("/api/test-connection", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          apiType,
-          config,
-        }),
-      });
+      let result;
+      if (import.meta.env.DEV) {
+        // En desarrollo, usar el mock
+        console.log("🧪 Usando mock para probar conexión");
+        result = await testConnectionMock(apiType, config);
+      } else {
+        // En producción, usar la función de Netlify
+        const response = await fetch("/.netlify/functions/test-connection", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            apiType,
+            config,
+          }),
+        });
 
-      const result = await response.json();
+        result = await response.json();
+      }
 
       setApiConfigs((prev) => ({
         ...prev,
@@ -401,55 +529,72 @@ Esperamos que hayas disfrutado mucho tu visita a *Jaraquemada* ayer.
   const fetchGroqModels = async (apiKey: string, currentModel?: string) => {
     setLoadingModels(true);
     try {
-      const response = await fetch('/api/groq/models', {
-        method: 'POST',
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ apiKey }),
-      });
+      // Cargar modelos de Groq desde la API real
+      let data;
 
-      if (response.ok) {
-        const data = await response.json();
-        setGroqModels(data.models || []);
-
-        // Si hay modelos disponibles, seleccionar automáticamente el mejor modelo disponible
-        if (data.models && data.models.length > 0) {
-          // Verificar si el modelo actual está en la lista de modelos disponibles
-          const modelToCheck = currentModel || aiSettings.model;
-          const currentModelExists = data.models.some(
-            (m: any) => m.id === modelToCheck,
-          );
-
-          if (!currentModelExists) {
-            // Seleccionar el primer modelo de la lista (ya están ordenados por prioridad)
-            const recommendedModel = data.models[0];
-            setAiSettings((prev) => ({ ...prev, model: recommendedModel.id }));
-          }
+      if (import.meta.env.DEV) {
+        // En desarrollo, intentar la API real primero, fallback a mock si falla
+        try {
+          console.log("Intentando cargar modelos desde API real de Groq...");
+          data = await fetchRealGroqModels(apiKey);
+          console.log("Modelos cargados exitosamente desde API real");
+        } catch (apiError) {
+          console.log("API real falló, usando mock local:", apiError.message);
+          data = await fetchGroqModelsMock(apiKey);
         }
-
-        // Actualizar el estado de conexión de Groq
-        setApiConfigs((prev) => ({
-          ...prev,
-          groq: {
-            ...prev.groq,
-            status: "connected",
-          },
-        }));
       } else {
-        const errorData = await response.json();
-        console.error("Error obteniendo modelos de Groq:", errorData.error);
-        setGroqModels([]);
-
-        // Actualizar el estado de conexión de Groq
-        setApiConfigs((prev) => ({
-          ...prev,
-          groq: {
-            ...prev.groq,
-            status: "error",
+        // En producción, usar la función de Netlify
+        const response = await fetch("/.netlify/functions/groq-models", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
           },
-        }));
+          body: JSON.stringify({ apiKey }),
+        });
+
+        if (response.ok) {
+          data = await response.json();
+        } else {
+          const errorData = await response.json();
+          console.error("Error obteniendo modelos de Groq:", errorData.error);
+          setGroqModels([]);
+          setApiConfigs((prev) => ({
+            ...prev,
+            groq: {
+              ...prev.groq,
+              status: "error",
+            },
+          }));
+          return;
+        }
       }
+
+      // Establecer los modelos obtenidos
+      setGroqModels(data.models || []);
+
+      // Si hay modelos disponibles, seleccionar automáticamente el mejor modelo disponible
+      if (data.models && data.models.length > 0) {
+        // Verificar si el modelo actual está en la lista de modelos disponibles
+        const modelToCheck = currentModel || aiSettings.model;
+        const currentModelExists = data.models.some(
+          (m: any) => m.id === modelToCheck,
+        );
+
+        if (!currentModelExists) {
+          // Seleccionar el primer modelo de la lista (ya están ordenados por prioridad)
+          const recommendedModel = data.models[0];
+          setAiSettings((prev) => ({ ...prev, model: recommendedModel.id }));
+        }
+      }
+
+      // Actualizar el estado de conexión de Groq
+      setApiConfigs((prev) => ({
+        ...prev,
+        groq: {
+          ...prev.groq,
+          status: "connected",
+        },
+      }));
     } catch (error) {
       console.error("Error:", error);
       setGroqModels([]);
@@ -498,26 +643,43 @@ Esperamos que hayas disfrutado mucho tu visita a *Jaraquemada* ayer.
       console.log("AI Settings:", aiSettings);
       console.log("Business Info:", aiSettings.businessInfo);
 
-      const response = await fetch("/.netlify/functions/config", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          apis: apiConfigs,
-          aiSettings,
-          businessInfo: aiSettings.businessInfo,
-          lastUpdated: new Date().toISOString(),
-        }),
-      });
-
-      const result = await response.json();
+      // Usar directamente Supabase para guardar configuración
+      console.log("💾 Usando Supabase para guardar configuración");
+      const result = await saveConfigToSupabase(
+        userId,
+        apiConfigs,
+        aiSettings,
+        aiSettings.businessInfo,
+      );
 
       if (result.success) {
         alert("✅ Configuración guardada exitosamente");
-        // Recargar la configuración para asegurar sincronización
-        await loadConfiguration();
+
+        // Mostrar indicador de carga mientras se recarga la configuración
+        setLoading("load");
+
+        try {
+          console.log("🔄 Recargando configuración después de guardar...");
+          console.log("  - User actual:", user);
+          console.log("  - User ID actual:", user?.id);
+
+          // Recargar la configuración desde Supabase para obtener los datos actualizados
+          if (user?.id) {
+            await loadConfiguration();
+            console.log("✅ Configuración recargada después de guardar");
+          } else {
+            console.error("❌ No hay user.id después de guardar -无法重新加载");
+            throw new Error("用户ID丢失，无法重新加载配置");
+          }
+        } catch (loadError) {
+          console.error(
+            "❌ Error recargando configuración después de guardar:",
+            loadError,
+          );
+          alert(
+            "⚠️ Configuración guardada pero hubo un error al actualizar la vista. Por favor, recarga la página.",
+          );
+        }
       } else {
         alert("❌ Error guardando configuración: " + result.error);
       }
